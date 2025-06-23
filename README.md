@@ -1,6 +1,4 @@
-You got it! Here's a concise `README.md` perfect for your GitHub repository, designed to quickly tell visitors what your project is about.
 
----
 
 # Solving MAX-Cut Problem with QAOA
 
