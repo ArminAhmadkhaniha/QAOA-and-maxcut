@@ -1,5 +1,3 @@
-
-
 # Solving MAX-Cut Problem with QAOA
 
 This repository contains a report and accompanying code exploring the **MAX-Cut problem** and its approximate solution using the **Quantum Approximate Optimization Algorithm (QAOA)**.
