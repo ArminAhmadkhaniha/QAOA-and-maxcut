@@ -1,0 +1,266 @@
+\documentclass{beamer}
+
+% Presentation title and personal information
+\title{Solving the MAX-cut Problem using QAOA}
+\author{Armin Ahmadkhaniha\\Computer Science PhD program}
+
+
+% Theme selection (e.g., Warsaw, AnnArbor, CambridgeUS)
+\usetheme{Warsaw}
+\usecolortheme{dolphin} % Set color theme
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{headline}{}
+% Optional packages
+\usepackage{amsmath, amssymb} % For math symbols
+\usepackage{physics}          % For quantum notation if needed
+\usepackage{graphicx}         % For including graphics
+\usepackage{tikz}
+\usetikzlibrary{positioning, arrows.meta}
+
+% Custom settings for a cleaner appearance
+\setbeamertemplate{footline}[frame number] % Page numbers
+\setbeamertemplate{navigation symbols}{} 
+
+\begin{document}
+
+% Title slide
+\begin{frame}
+    \titlepage
+\end{frame}
+
+% Outline slide (optional)
+\begin{frame}{Outline}
+    \tableofcontents
+\end{frame}
+
+% Sections and slides for your presentation
+\section{Prerequisite}
+\begin{frame}{Quadratic Optimization Problem}
+    \begin{columns}
+        \column{0.5\textwidth}
+        \begin{itemize}
+            \item Optimization problems with quadratic objective function and linear and quadratic constraints
+            
+            
+        \end{itemize}
+   
+    
+    \column{0.5\textwidth}
+    \textbf{minimize}  $x^T Q x + c^T x$ \\
+    \hspace*{20pt} $Q \in \mathbb{R}^{n \times n}, \quad c \in \mathbb{R}^n$ \\
+    \textbf{subject to} \\
+     $Ax \leq b$ \\
+     $x^T Q_i x + a_i^T x \leq r_i$ \\
+     $l_j \leq x \leq u_j$
+    \end{columns}
+\end{frame}
+\begin{frame}{QUBO}
+    \begin{columns}
+        \column{0.5\textwidth}
+    \begin{itemize}
+        \item Special case: Quadratic Unconstrained Binary Optimization (QUBO)
+        \begin{enumerate}
+        \item Quadratic objective function
+        \item No variable constraints
+        \item Binary optimization variables
+    
+        \end{enumerate}
+        \end{itemize}
+
+        \column{0.5\textwidth}
+        \textbf{minimize}  $x^T Q x + c^T x$ \\
+        $x \in \{0,1\}^n$, $Q \in \mathbb{R}^{n \times n}, \quad c \in \mathbb{R}^n$ \\
+       
+    
+    \end{columns}
+\end{frame}
+\begin{frame}{what is MAX-cut?}
+   \centering
+    \includegraphics{maxcut.pdf}
+\end{frame}
+\section{MAX-cut as QUBO}
+\begin{frame}{MAX-cut as QUBO}
+    \begin{columns}
+        % Left column
+        \begin{column}{0.35\textwidth}
+            \textbf{MaxCut}
+
+            \vspace{0.55cm}
+            \textbf{Weight matrix}
+            \[
+            w = \begin{pmatrix}
+            0 & 1 & 2 & 3 \\
+            1 & 0 & 3 & 4 \\
+            2 & 3 & 0 & 1 \\
+            3 & 4 & 1 & 0 \\
+            \end{pmatrix}
+            \]
+
+            
+            \textbf{Cost function}
+            \[
+            C(x) = \sum_{i,j=1}^{n} W_{ij} x_i (1 - x_j)
+            \]
+        \end{column}
+
+        % Middle column (Graph)
+        \begin{column}{0.40\textwidth}
+            \centering
+         \includegraphics[width=\textwidth]{maxweight.pdf}
+        \end{column}
+
+        
+    \end{columns}
+\end{frame} 
+   \begin{frame}{MAX-cut as QUBO}
+    \textbf{QUBO}
+
+            \vspace{0.5cm}
+            \textbf{QUBO matrix and vector}
+            \[
+            c_i = \sum_{j=1}^{n} W_{ij}, \quad Q_{ij} = -W_{ij}
+            \]
+
+            \vspace{0.5cm}
+            \textbf{Cost function}
+            \[
+            C(x) = \sum_{i,j=1}^{n} x_i Q_{ij} x_j + \sum_{i=1}^{n} c_i x_i 
+            \]
+            \[
+            = x^T Q x + c^T x
+            \]
+   
+    
+   
+   \end{frame}
+\section{What is the ansatz?}
+\begin{frame}{Hamiltonian derivation}
+    
+    \[
+        H_C |x\rangle = C(x) |x\rangle
+        \]
+    
+        \vspace{1cm}
+        
+        \textbf{QUBO cost function}
+        \[
+        C(x) = \sum_{i,j=1}^{n} x_i Q_{ij} x_j + \sum_{i=1}^{n} c_i x_i
+        \]
+    
+        \vspace{1cm}
+    
+        \textbf{Hamiltonian operator}
+        \[
+        H_C = \sum_{i,j=1}^{n} \frac{1}{4} Q_{ij} Z_i Z_j - \sum_{i=1}^{n} \frac{1}{2} \left( c_i + \sum_{j=1}^{n} Q_{ij} \right) Z_i + \left( \sum_{i,j=1}^{n} \frac{Q_{ij}}{4} + \sum_{i=1}^{n} \frac{c_i}{2} \right)
+        \] 
+    
+\end{frame}
+\begin{frame}{Matrix exponential}
+    \textbf{Matrix exponential} \\
+    For a matrix $\mathbf{M}$, the matrix exponential is defined as the power series:
+    \[
+        e^{\mathbf{M}} = \sum_{k=0}^{\infty} \frac{1}{k!} \mathbf{M}^k
+    \]
+    
+    \vspace{1cm}
+    
+    \[
+        e^{-i \theta X} = R_X(2 \theta) = \begin{pmatrix} \cos(\theta) & -i \sin(\theta) \\ -i \sin(\theta) & \cos(\theta) \end{pmatrix}
+    \]
+    
+    \[
+        e^{-i \theta Y} = R_Y(2 \theta) = \begin{pmatrix} \cos(\theta) & -\sin(\theta) \\ \sin(\theta) & \cos(\theta) \end{pmatrix}
+    \]
+    
+    \[
+        e^{-i \theta Z} = R_Z(2 \theta) = \begin{pmatrix} e^{-i \theta} & 0 \\ 0 & e^{i \theta} \end{pmatrix}
+    \]
+    
+    \vspace{1cm}
+    
+    \textbf{Pauli matrices}
+    \[
+        X = \begin{pmatrix} 0 & 1 \\ 1 & 0 \end{pmatrix}, \quad Y = \begin{pmatrix} 0 & -i \\ i & 0 \end{pmatrix}, \quad Z = \begin{pmatrix} 1 & 0 \\ 0 & -1 \end{pmatrix}
+    \]
+\end{frame}
+\begin{frame}{Quantum Circuit}
+   \textbf{Cost Layer}
+   
+    \[
+H_C = \sum_{i,j=1}^n \frac{1}{4} Q_{ij} Z_i Z_j - \sum_{i=1}^n \frac{1}{2} \left( c_i + \sum_{j=1}^n Q_{ij} \right) Z_i
+\]
+
+\[
+e^{-i \gamma H_C} = \prod_{i,j=1}^n R_{Z_i Z_j} \left( \frac{1}{2} Q_{ij} \gamma \right) \prod_{i=1}^n R_{Z_i} \left( \left( c_i + \sum_{j=1}^n Q_{ij} \right) \gamma \right)
+\]
+
+    
+
+\end{frame}
+\begin{frame}{Quantum Circuit}
+    
+ 
+    \includegraphics[width=\textwidth]{cost.pdf}
+ 
+ \end{frame}
+\begin{frame}{Quantum Circuit}
+    
+    \begin{columns}
+        
+        \begin{column}{0.6\textwidth}
+            \textbf{Mixer Layer}
+
+            \[
+H_M = \sum_{i=1}^n X_i \quad \quad X = \begin{pmatrix} 1 & 0 \\ 0 & -1 \end{pmatrix}
+\]
+
+\[
+e^{-i \beta H_M} = \prod_{i=1}^n R_X(2 \beta)
+\]
+        \end{column}
+
+        % Middle column (Graph)
+        \begin{column}{0.40\textwidth}
+            
+         \includegraphics[width=\textwidth]{mixer.pdf}
+        \end{column}
+
+        
+    \end{columns}
+    
+ 
+     
+ 
+ \end{frame}
+\section{Codes}
+                \begin{frame}{Codes}
+                \textbf{Show us some coding!!!!}
+                \url{https://github.com/ArminAhmadkhaniha/QAOA-and-maxcut/blob/main/qaoamax.ipynb}
+                \end{frame}
+                
+\section{References}
+\begin{frame}{References}
+    \begin{itemize}
+        \item  E. Farhi, J. Goldstone, and S. Gutmann, A Quantum Approximate Optimization Algorithm, ArXiv:1411.4028 [Quant-Ph] (2014)
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \begin{center}
+        \textbf{Thank you for your time and attention!}
+        \vspace{1cm}
+        
+        Questions and Discussion
+        \vspace{1cm}
+        
+        \textbf{Contact Information:}
+        \begin{itemize}
+            %\item \textbf{Name:} Armin Ahmadkhaniha
+            \item \textbf{Email:} ahmadkha@mcmaster.ca
+            
+        \end{itemize}
+    \end{center}
+\end{frame}
+
+
+\end{document}
